@@ -1,3 +1,110 @@
 @import "tailwindcss";
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Quicksand', sans-serif;
+  background: #FFF9F0;
+  color: #3D2C47;
+  overflow-x: hidden;
+}
+
+.font-playfair {
+  font-family: var(--font-playfair);
+}
+
+.font-quicksand {
+  font-family: var(--font-quicksand);
+}
+
+@keyframes marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 26s linear infinite;
+  will-change: transform;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes floatBox {
+  0%, 100% { transform: translateY(0);     }
+  50%      { transform: translateY(-16px); }
+}
+
+@keyframes floatItem {
+  0%, 100% { transform: translateY(0);     }
+  50%      { transform: translateY(-12px); }
+}
+
+@keyframes sparkleAnim {
+  0%   { opacity: 0.4; transform: scale(0.8) rotate(0deg);  }
+  100% { opacity: 1;   transform: scale(1.2) rotate(20deg); }
+}
+
+@keyframes blobDrift {
+  0%   { transform: translate(0, 0)       scale(1);    }
+  100% { transform: translate(30px, 40px) scale(1.08); }
+}
+
+/* Bottom nav slide-up */
+@keyframes slideUp {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(24px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0);    }
+}
+
+@layer utilities {
+  .text-gradient-pink-blue {
+    background: linear-gradient(135deg, #FF8FAB 0%, #C8B2E8 50%, #B8D8F8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-pink {
+    background: linear-gradient(135deg, #FF8FAB, #C8B2E8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass card */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.70);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(200, 178, 232, 0.2);
+    box-shadow: 0 10px 40px rgba(200, 178, 232, 0.15);
+  }
+
+  /* Animate helpers */
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .animate-float-box {
+    animation: floatBox 4s ease-in-out infinite;
+  }
+
+  .animate-blob-drift {
+    animation: blobDrift 12s ease-in-out infinite alternate;
+  }
+}

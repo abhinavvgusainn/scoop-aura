@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 const SECTION_CSS = `
   @keyframes rotateBorder {
@@ -163,6 +164,7 @@ const SCOOPS: ScoopItem[] = [
 ];
 
 export default function Scoops() {
+  const router = useRouter();
   const injected = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -503,6 +505,7 @@ export default function Scoops() {
               <button
                 className="card-cta-btn"
                 style={scoop.ctaStyle}
+                onClick={() => router.push(`/order/${scoop.id}`)}
               >
                 {scoop.ctaLabel}
               </button>

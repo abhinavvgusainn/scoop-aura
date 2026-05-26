@@ -5,10 +5,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_LINKS = [
-  { href: "/", label: "Home", icon: "🏠" },
-  { href: "/scoops", label: "Scoops", icon: "🍨" },
-  { href: "/how-it-works", label: "How It Works", icon: "✨" },
-  { href: "/reviews", label: "Reviews", icon: "💕" },
+  { href: "/#home", label: "Home", icon: "🏠" },
+
+  { href: "/#scoops", label: "Scoops", icon: "🍨" },
+
+  {
+    href: "/#process",
+    label: "How It Works",
+    icon: "✨",
+  },
+
+  {
+    href: "/#reviews",
+    label: "Reviews",
+    icon: "💕",
+  },
 ];
 
 export default function Navbar() {

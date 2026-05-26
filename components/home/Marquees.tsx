@@ -45,13 +45,13 @@ export default function Marquees() {
       <div className="relative w-full overflow-hidden py-4 md:py-5">
 
         {/* glow bg */}
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-100/40 via-purple-100/30 to-blue-100/40 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-linear-to-r from-pink-100/40 via-purple-100/30 to-blue-100/40 backdrop-blur-sm" />
 
         {/* fade left */}
-        <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-10 md:w-20 bg-gradient-to-r from-[#FFF9F0] to-transparent" />
+        <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-10 md:w-20 bg-linear-to-r from-[#FFF9F0] to-transparent" />
 
         {/* fade right */}
-        <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-10 md:w-20 bg-gradient-to-l from-[#FFF9F0] to-transparent" />
+        <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-10 md:w-20 bg-linear-to-l from-[#FFF9F0] to-transparent" />
 
         {/* marquee wrapper */}
         <div className="flex overflow-hidden">
@@ -109,7 +109,7 @@ export default function Marquees() {
       {/* TRUST PILLS */}
       {/* ========================= */}
 
-      <div className="mx-auto mt-5 flex w-full max-w-[1200px] flex-wrap items-center justify-center gap-2 px-4 md:gap-3">
+      <div className="mx-auto mt-5 flex w-full max-w-300 flex-wrap items-center justify-center gap-2 px-4 md:gap-3">
 
         {trustItems.map((item, index) => (
           <div

@@ -122,7 +122,7 @@ export default function HeroSection() {
         pt-[92px]
         pb-[24px]
 
-        md:pt-[88px]
+        md:pt-[0px]
         md:pb-[40px]
 
         gap-[4%]
@@ -232,7 +232,7 @@ export default function HeroSection() {
                 : "none",
           }}
         >
-          ✦ India&apos;s #1 Mystery Box Brand
+          ✦ India&apos;s Most Aesthetic Surprise Box
         </span>
 
         {/* HEADLINE */}
@@ -308,31 +308,6 @@ export default function HeroSection() {
           items, accessories, and exclusive
           freebies — curated just for you.
         </p>
-
-        {/* BUTTONS */}
-
-        <div
-          className="
-            flex flex-wrap
-            justify-center md:justify-start
-            gap-2.5
-          "
-          style={{
-            opacity: mounted ? undefined : 0,
-            animation:
-              mounted
-                ? "fadeUp 0.7s 0.3s ease both"
-                : "none",
-          }}
-        >
-          <PrimaryButton>
-            ✦ Shop Scoops
-          </PrimaryButton>
-
-          <SecondaryButton>
-            Explore Mystery →
-          </SecondaryButton>
-        </div>
 
         {/* STATS */}
 

@@ -505,7 +505,7 @@ export default function Scoops() {
               <button
                 className="card-cta-btn"
                 style={scoop.ctaStyle}
-                onClick={() => router.push(`/order/${scoop.id}`)}
+                onClick={() => router.push(`/checkout?scoop=${scoop.id}`)}
               >
                 {scoop.ctaLabel}
               </button>

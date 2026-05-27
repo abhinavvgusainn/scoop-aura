@@ -356,7 +356,7 @@ export default function CheckoutPage() {
   const basePrice      = scoop?.price ?? 0;
   const deliveryCharge = scoop?.deliveryCharge ?? 0;
   const subtotal       = basePrice + deliveryCharge;
-  const tax            = Math.round(subtotal * (scoop?.taxRate ?? 0));
+  const tax            = Math.round(subtotal * (scoop?.taxRate ?? 0) * 100) / 100;
   const total          = subtotal + tax;
 
   // ── Form state
@@ -644,7 +644,7 @@ export default function CheckoutPage() {
                       className={`co-input ${errors.postalCode && touched.postalCode ? "error" : ""} ${isValid("postalCode") ? "valid" : ""}`}
                       placeholder={form.country === "IN" ? "400001" : "00000"}
                       value={form.postalCode}
-                      onChange={(e) => handleChange("postalCode", e.target.value.replace(/\D/, ""))}
+                      onChange={(e) => handleChange("postalCode", e.target.value.replace(/\D/g, ""))}
                       onBlur={() => handleBlur("postalCode")}
                       maxLength={10}
                     />
@@ -703,7 +703,7 @@ export default function CheckoutPage() {
                     className={`co-input phone-input ${errors.phone && touched.phone ? "error" : ""} ${isValid("phone") ? "valid" : ""}`}
                     placeholder={form.country === "IN" ? "98765 43210" : "000 000 0000"}
                     value={form.phone}
-                    onChange={(e) => handleChange("phone", e.target.value.replace(/\D/, ""))}
+                    onChange={(e) => handleChange("phone", e.target.value.replace(/\D/g, ""))}
                     onBlur={() => handleBlur("phone")}
                     maxLength={15}
                     style={{ flex: 1 }}

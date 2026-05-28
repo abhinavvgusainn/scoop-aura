@@ -1,5 +1,3 @@
-// app/layout.tsx
-
 import type { Metadata } from "next";
 import {
   Quicksand,
@@ -7,7 +5,6 @@ import {
 } from "next/font/google";
 
 import "./globals.css";
-import AppwritePing from "@/components/AppwritePing";
 import Navbar from "@/components/Navbar";
 
 const quicksand = Quicksand({
@@ -46,7 +43,6 @@ export default function RootLayout({
       `}
     >
       <body className="antialiased">
-        <AppwritePing />
         <Navbar />
         <main>
           {children}

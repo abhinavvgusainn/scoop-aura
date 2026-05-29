@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createOrder } from "@/lib/createOrder";
 import { getScoopById } from "@/lib/scoops";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface FormData {
-  // Contact
   email: string;
-  // Shipping address
   fullName: string;
   addressLine1: string;
   addressLine2: string;
@@ -16,7 +15,6 @@ interface FormData {
   state: string;
   postalCode: string;
   country: string;
-  // Phone
   phone: string;
 }
 
@@ -72,6 +70,16 @@ const COUNTRIES = [
   { code: "AE", name: "United Arab Emirates" },
 ];
 
+const DIAL_CODES: Record<string, string> = {
+  IN: "🇮🇳 +91",
+  US: "🇺🇸 +1",
+  GB: "🇬🇧 +44",
+  CA: "🇨🇦 +1",
+  AU: "🇦🇺 +61",
+  SG: "🇸🇬 +65",
+  AE: "🇦🇪 +971",
+};
+
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CHECKOUT_CSS = `
   @keyframes fadeUp {
@@ -89,11 +97,6 @@ const CHECKOUT_CSS = `
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
-  @keyframes checkPop {
-    0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
-    70%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
-  }
   @keyframes overlayIn {
     from { opacity: 0; }
     to   { opacity: 1; }
@@ -101,6 +104,13 @@ const CHECKOUT_CSS = `
   @keyframes dialogIn {
     from { opacity: 0; transform: translateY(30px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-6px); }
+    40%     { transform: translateX(6px); }
+    60%     { transform: translateX(-4px); }
+    80%     { transform: translateX(4px); }
   }
 
   .co-card {
@@ -111,6 +121,10 @@ const CHECKOUT_CSS = `
     border: 1px solid rgba(200,178,232,0.22);
     box-shadow: 0 8px 32px rgba(200,178,232,0.14);
     animation: scaleIn 0.45s ease both;
+    transition: border-color 0.3s;
+  }
+  .co-card.has-errors {
+    border-color: rgba(239,68,68,0.25);
   }
 
   .co-input {
@@ -167,6 +181,10 @@ const CHECKOUT_CSS = `
   .co-select:focus {
     border-color: rgba(255,143,171,0.6);
     box-shadow: 0 0 0 4px rgba(255,143,171,0.08);
+  }
+  .co-select.error {
+    border-color: rgba(239,68,68,0.5);
+    box-shadow: 0 0 0 4px rgba(239,68,68,0.06);
   }
 
   .co-label {
@@ -233,6 +251,9 @@ const CHECKOUT_CSS = `
   .pay-btn:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
   }
+  .pay-btn.shake {
+    animation: shake 0.45s ease;
+  }
 
   .phone-prefix {
     display: flex;
@@ -255,30 +276,11 @@ const CHECKOUT_CSS = `
     border-radius: 0 14px 14px 0 !important;
   }
 
-  .secure-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #A887B8;
-    font-family: var(--font-quicksand, 'Quicksand', sans-serif);
-  }
-
-  /* Progress steps */
   .checkout-steps {
     display: flex;
     align-items: center;
     gap: 0;
     margin-bottom: 2rem;
-  }
-  .step-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    font-family: var(--font-quicksand, 'Quicksand', sans-serif);
   }
   .step-dot {
     width: 24px;
@@ -318,7 +320,18 @@ const CHECKOUT_CSS = `
     background: linear-gradient(to right, #FF8FAB, #C8B2E8);
   }
 
-  /* ── Preference Dialog ── */
+  .validation-banner {
+    background: rgba(239,68,68,0.07);
+    border: 1.5px solid rgba(239,68,68,0.2);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    animation: fadeUp 0.3s ease both;
+    font-family: var(--font-quicksand, 'Quicksand', sans-serif);
+  }
+
   .pref-overlay {
     position: fixed; inset: 0; z-index: 200;
     background: rgba(61,44,71,0.45);
@@ -363,32 +376,145 @@ const CHECKOUT_CSS = `
   .order-btn-main {
     transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
   }
-  .order-btn-main:hover {
+  .order-btn-main:hover:not(:disabled) {
     transform: translateY(-2px);
     filter: brightness(1.06);
   }
-  .order-btn-main:active {
+  .order-btn-main:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
+  }
+
+  @media (max-width: 768px) {
+    .checkout-responsive-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .order-summary-sticky {
+      position: static !important;
+    }
   }
 `;
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Field component — defined OUTSIDE CheckoutPage to prevent remount on each render ───
+// If defined inside, React sees a new component type every render → unmounts & remounts
+// the input → focus is lost after every keystroke.
+function Field({
+  label,
+  field,
+  placeholder,
+  type = "text",
+  form,
+  errors,
+  touched,
+  submitAttempted,
+  onChange,
+  onBlur,
+}: {
+  label: string;
+  field: keyof FormData;
+  placeholder: string;
+  type?: string;
+  form: FormData;
+  errors: FormErrors;
+  touched: Partial<Record<keyof FormData, boolean>>;
+  submitAttempted: boolean;
+  onChange: (field: keyof FormData, value: string) => void;
+  onBlur: (field: keyof FormData) => void;
+}) {
+  const hasError = !!(errors[field] && (touched[field] || submitAttempted));
+  const isValid = !!(
+    (touched[field] || submitAttempted) &&
+    !errors[field] &&
+    form[field]
+  );
+
+  return (
+    <div>
+      <label className="co-label" htmlFor={field}>
+        {label}
+      </label>
+      <input
+        id={field}
+        type={type}
+        className={`co-input ${hasError ? "error" : ""} ${isValid ? "valid" : ""}`}
+        placeholder={placeholder}
+        value={form[field]}
+        onChange={(e) => onChange(field, e.target.value)}
+        onBlur={() => onBlur(field)}
+        autoComplete={
+          field === "email" ? "email" : field === "phone" ? "tel" : "on"
+        }
+        aria-invalid={hasError}
+        aria-describedby={hasError ? `${field}-error` : undefined}
+      />
+      {hasError && (
+        <p id={`${field}-error`} className="co-error-msg" role="alert">
+          ⚠ {errors[field]}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Helper component — also outside to be safe ──────────────────────────────
+function PriceRow({
+  label,
+  value,
+  highlight,
+  soft,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  soft?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <span
+        style={{
+          fontSize: "0.84rem",
+          fontWeight: 600,
+          color: soft ? "#C8B2E8" : "#A887B8",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: "0.84rem",
+          fontWeight: 700,
+          color: highlight ? "#5DB87A" : soft ? "#C8B2E8" : "#3D2C47",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const cssRef = useRef(false);
+  const formTopRef = useRef<HTMLDivElement>(null);
+  const payBtnRef = useRef<HTMLButtonElement>(null);
 
   const scoopId = searchParams.get("scoop") ?? "";
   const scoop = getScoopById(scoopId);
 
-  // Recompute pricing from scoop (don't trust URL param for total)
   const basePrice = scoop?.price ?? 0;
   const deliveryCharge = scoop?.deliveryCharge ?? 0;
   const subtotal = basePrice + deliveryCharge;
   const tax = Math.round(subtotal * (scoop?.taxRate ?? 0) * 100) / 100;
   const total = subtotal + tax;
 
-  // ── Form state
+  // ── Form state ──────────────────────────────────────────────────────────────
   const [form, setForm] = useState<FormData>({
     email: "",
     fullName: "",
@@ -404,9 +530,10 @@ export default function CheckoutPage() {
   const [touched, setTouched] = useState<
     Partial<Record<keyof FormData, boolean>>
   >({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // ── Preference dialog state
+  // ── Preference dialog state ─────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false);
   const [prefText, setPrefText] = useState("");
   const [savedPrefs, setSavedPrefs] = useState<{
@@ -414,7 +541,7 @@ export default function CheckoutPage() {
     text: string;
   } | null>(null);
 
-  // Inject CSS once
+  // ── Inject CSS once ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (cssRef.current) return;
     cssRef.current = true;
@@ -423,7 +550,7 @@ export default function CheckoutPage() {
     document.head.appendChild(s);
   }, []);
 
-  // Load saved preferences from sessionStorage on mount
+  // ── Load saved preferences from sessionStorage on mount ─────────────────────
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("scoopPrefs");
@@ -437,7 +564,7 @@ export default function CheckoutPage() {
     }
   }, []);
 
-  // Lock body scroll when dialog is open
+  // ── Lock body scroll when dialog open ──────────────────────────────────────
   useEffect(() => {
     document.body.style.overflow = dialogOpen ? "hidden" : "";
     return () => {
@@ -445,7 +572,7 @@ export default function CheckoutPage() {
     };
   }, [dialogOpen]);
 
-  // ── Validation
+  // ── Validation ──────────────────────────────────────────────────────────────
   const validate = useCallback((data: FormData): FormErrors => {
     const e: FormErrors = {};
     if (!data.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
@@ -465,7 +592,7 @@ export default function CheckoutPage() {
   const handleChange = (field: keyof FormData, value: string) => {
     const updated = { ...form, [field]: value };
     setForm(updated);
-    if (touched[field]) {
+    if (touched[field] || submitAttempted) {
       const e = validate(updated);
       setErrors((prev) => ({ ...prev, [field]: e[field] }));
     }
@@ -477,7 +604,47 @@ export default function CheckoutPage() {
     setErrors((prev) => ({ ...prev, [field]: e[field] }));
   };
 
-  // ── Preference handlers
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const isValid = (field: keyof FormData) =>
+    (touched[field] || submitAttempted) && !errors[field] && form[field];
+
+  const hasError = (field: keyof FormData) =>
+    !!(errors[field] && (touched[field] || submitAttempted));
+
+  const scrollToFirstError = (errs: FormErrors) => {
+    const FIELD_ORDER: (keyof FormData)[] = [
+      "email",
+      "fullName",
+      "addressLine1",
+      "city",
+      "postalCode",
+      "state",
+      "phone",
+    ];
+    for (const field of FIELD_ORDER) {
+      if (errs[field]) {
+        const el = document.getElementById(field);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+          return;
+        }
+      }
+    }
+  };
+
+  const shakePayBtn = () => {
+    const btn = payBtnRef.current;
+    if (!btn) return;
+    btn.classList.remove("shake");
+    void btn.offsetWidth;
+    btn.classList.add("shake");
+    btn.addEventListener("animationend", () => btn.classList.remove("shake"), {
+      once: true,
+    });
+  };
+
+  // ── Preference handlers ─────────────────────────────────────────────────────
   const savePrefs = () => {
     const prefs = { chips: [] as string[], text: prefText.trim() };
     setSavedPrefs(prefs);
@@ -489,143 +656,171 @@ export default function CheckoutPage() {
     setDialogOpen(false);
   };
 
-  // ── Submit → trigger Razorpay
-  const loadRazorpayScript = () => {
-    return new Promise<boolean>((resolve) => {
-      const existingScript = document.getElementById("razorpay-script");
-
-      if (existingScript) {
+  // ── Load Razorpay script ────────────────────────────────────────────────────
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (document.getElementById("razorpay-script")) {
         resolve(true);
         return;
       }
-
       const script = document.createElement("script");
-
       script.id = "razorpay-script";
-
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
-
       script.onload = () => resolve(true);
-
       script.onerror = () => resolve(false);
-
       document.body.appendChild(script);
     });
   };
 
+  // ── Submit ──────────────────────────────────────────────────────────────────
   const handlePayNow = async () => {
-  try {
-    setLoading(true);
+    const allTouched: Partial<Record<keyof FormData, boolean>> = {};
+    (Object.keys(form) as (keyof FormData)[]).forEach((k) => {
+      allTouched[k] = true;
+    });
+    setTouched(allTouched);
+    setSubmitAttempted(true);
 
-    const scriptLoaded = await loadRazorpayScript();
+    const errs = validate(form);
+    setErrors(errs);
 
-    if (!scriptLoaded) {
+    if (Object.keys(errs).length > 0) {
+      shakePayBtn();
+      scrollToFirstError(errs);
       return;
     }
 
-    const response = await fetch("/api/create-order", {
-      method: "POST",
+    try {
+      setLoading(true);
 
-      headers: {
-        "Content-Type": "application/json",
-      },
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        alert("Failed to load payment gateway. Please refresh and try again.");
+        return;
+      }
 
-      body: JSON.stringify({
-        amount: total,
-      }),
-    });
+      const response = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: total }),
+      });
 
-    const order = await response.json();
+      if (!response.ok) {
+        throw new Error(`Order creation failed: ${response.status}`);
+      }
 
-    const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      const order = await response.json();
 
-      amount: order.amount,
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Your Store Name",
+        description: `${scoop?.name ?? "Mystery"} Scoop`,
+        order_id: order.id,
+        handler: async (razorpayResponse: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch("/api/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
+                // order details
+                scoop: scoop?.id || "",
+                email: form.email,
+                fullName: form.fullName,
+                addressLine1: form.addressLine1,
+                addressLine2: form.addressLine2,
+                city: form.city,
+                state: form.state,
+                postalCode: form.postalCode,
+                country: form.country,
+                phone: form.phone,
+                preferences: savedPrefs?.text || "",
+                amount: total,
+              }),
+            });
 
-      currency: order.currency,
+            const verifyData = await verifyRes.json();
 
-      name: "Your Store Name",
+            if (!verifyRes.ok || !verifyData.success) {
+              alert(
+                "Payment verification failed. Please contact support with your payment ID: " +
+                  razorpayResponse.razorpay_payment_id,
+              );
+              setLoading(false);
+              return;
+            }
 
-      description: `${scoop?.name ?? "Mystery"} Scoop`,
+            // ── Verification passed → store for success page ──────────────────
+            try {
+              sessionStorage.setItem(
+                "lastOrder",
+                JSON.stringify({
+                  paymentId: razorpayResponse.razorpay_payment_id,
+                  orderId: order.id,
+                  scoopName: scoop?.name,
+                  scoopEmoji: scoop?.emoji,
+                  total,
+                  fullName: form.fullName,
+                  email: form.email,
+                  deliveryDays: scoop?.deliveryDays,
+                }),
+              );
+            } catch {
+              /* ignore */
+            }
 
-      order_id: order.id,
+            router.push("/order-success");
+          } catch (error) {
+            console.error("Verification error:", error);
+            alert(
+              "Something went wrong during verification. Please contact support with your payment ID: " +
+                razorpayResponse.razorpay_payment_id,
+            );
+            setLoading(false);
+          }
+        },
+        prefill: {
+          name: form.fullName,
+          email: form.email,
+          contact: form.phone,
+        },
+        theme: { color: "#FF8FAB" },
+        modal: {
+          ondismiss: () => setLoading(false),
+        },
+      };
 
-      handler: async function (response: any) {
-        console.log("PAYMENT SUCCESS");
-
-        console.log(response);
-
-        router.push("/order-success");
-      },
-
-      prefill: {
-        name: form.fullName,
-
-        email: form.email,
-
-        contact: form.phone,
-      },
-
-      theme: {
-        color: "#FF8FAB",
-      },
-    };
-
-    const razorpay = new (window as any).Razorpay(
-      options
-    );
-
-    razorpay.open();
-
-    razorpay.on("payment.failed", function (
-      response: any
-    ) {
-      console.error(response.error);
-    });
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // ── Input helper
-  const isValid = (field: keyof FormData) =>
-    touched[field] && !errors[field] && form[field];
-
-  const Field = ({
-    label,
-    field,
-    placeholder,
-    type = "text",
-  }: {
-    label: string;
-    field: keyof FormData;
-    placeholder: string;
-    type?: string;
-  }) => (
-    <div>
-      <label className="co-label" htmlFor={field}>
-        {label}
-      </label>
-      <input
-        id={field}
-        type={type}
-        className={`co-input ${errors[field] && touched[field] ? "error" : ""} ${isValid(field) ? "valid" : ""}`}
-        placeholder={placeholder}
-        value={form[field]}
-        onChange={(e) => handleChange(field, e.target.value)}
-        onBlur={() => handleBlur(field)}
-        autoComplete={
-          field === "email" ? "email" : field === "phone" ? "tel" : "on"
+      const razorpay = new (
+        window as unknown as {
+          Razorpay: new (o: typeof options) => {
+            open: () => void;
+            on: (e: string, cb: (r: unknown) => void) => void;
+          };
         }
-      />
-      {errors[field] && touched[field] && (
-        <p className="co-error-msg">⚠ {errors[field]}</p>
-      )}
-    </div>
-  );
+      ).Razorpay(options);
+      razorpay.open();
+      razorpay.on("payment.failed", (response: unknown) => {
+        console.error("Payment failed:", response);
+        setLoading(false);
+      });
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Something went wrong. Please try again.");
+    }
+  };
 
+  // ── Error count for banner ───────────────────────────────────────────────────
+  const errorCount = submitAttempted ? Object.keys(errors).length : 0;
+
+  // ── No scoop selected ───────────────────────────────────────────────────────
   if (!scoop) {
     return (
       <div
@@ -653,6 +848,7 @@ export default function CheckoutPage() {
           Please go back and select a scoop first.
         </p>
         <button
+          type="button"
           onClick={() => router.push("/#scoops")}
           style={{
             background: "linear-gradient(135deg,#FF8FAB,#C8B2E8)",
@@ -672,9 +868,10 @@ export default function CheckoutPage() {
     );
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── Blobs */}
+      {/* Background blobs */}
       <div
         aria-hidden
         style={{
@@ -730,6 +927,7 @@ export default function CheckoutPage() {
       </div>
 
       <div
+        ref={formTopRef}
         style={{
           position: "relative",
           zIndex: 1,
@@ -738,8 +936,9 @@ export default function CheckoutPage() {
           padding: "40px 5% 100px",
         }}
       >
-        {/* ── Back */}
+        {/* Back button */}
         <button
+          type="button"
           onClick={() => router.push("/#scoops")}
           style={{
             background: "none",
@@ -759,7 +958,7 @@ export default function CheckoutPage() {
           ← Back to Scoops
         </button>
 
-        {/* ── Progress steps */}
+        {/* Progress steps */}
         <div className="checkout-steps" style={{ marginBottom: "2rem" }}>
           {[
             { label: "Scoop", n: "1" },
@@ -803,7 +1002,7 @@ export default function CheckoutPage() {
           ))}
         </div>
 
-        {/* ── Page heading */}
+        {/* Page heading */}
         <div
           style={{ marginBottom: "2rem", animation: "fadeUp 0.5s ease both" }}
         >
@@ -843,7 +1042,42 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        {/* ── Two-column layout */}
+        {/* Validation error banner */}
+        {errorCount > 0 && (
+          <div
+            className="validation-banner"
+            role="alert"
+            aria-live="polite"
+            style={{ marginBottom: "1.5rem" }}
+          >
+            <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>⚠️</span>
+            <div>
+              <p
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 800,
+                  color: "#EF4444",
+                  margin: 0,
+                }}
+              >
+                Please fix {errorCount} {errorCount === 1 ? "field" : "fields"}{" "}
+                before continuing
+              </p>
+              <p
+                style={{
+                  fontSize: "0.78rem",
+                  fontWeight: 500,
+                  color: "#A88",
+                  margin: "2px 0 0",
+                }}
+              >
+                Highlighted fields above need your attention.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Two-column layout */}
         <div
           style={{
             display: "grid",
@@ -853,13 +1087,13 @@ export default function CheckoutPage() {
           }}
           className="checkout-responsive-grid"
         >
-          {/* ════ LEFT — Form ════ */}
+          {/* ════ LEFT — Form ════════════════════════════════════════════════ */}
           <div
             style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}
           >
-            {/* ── Section 1: Contact */}
+            {/* Section 1: Contact */}
             <div
-              className="co-card"
+              className={`co-card ${hasError("email") ? "has-errors" : ""}`}
               style={{ padding: "1.8rem 2rem", animationDelay: "0.1s" }}
             >
               <h2 className="co-section-title">
@@ -871,12 +1105,28 @@ export default function CheckoutPage() {
                 field="email"
                 placeholder="you@example.com"
                 type="email"
+                form={form}
+                errors={errors}
+                touched={touched}
+                submitAttempted={submitAttempted}
+                onChange={handleChange}
+                onBlur={handleBlur}
               />
             </div>
 
-            {/* ── Section 2: Shipping Address */}
+            {/* Section 2: Shipping Address */}
             <div
-              className="co-card"
+              className={`co-card ${
+                [
+                  "fullName",
+                  "addressLine1",
+                  "city",
+                  "postalCode",
+                  "state",
+                ].some((f) => hasError(f as keyof FormData))
+                  ? "has-errors"
+                  : ""
+              }`}
               style={{ padding: "1.8rem 2rem", animationDelay: "0.18s" }}
             >
               <h2 className="co-section-title">
@@ -894,6 +1144,12 @@ export default function CheckoutPage() {
                   label="Full name"
                   field="fullName"
                   placeholder="Riya Sharma"
+                  form={form}
+                  errors={errors}
+                  touched={touched}
+                  submitAttempted={submitAttempted}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
                 />
 
                 {/* Country */}
@@ -919,11 +1175,23 @@ export default function CheckoutPage() {
                   label="Address line 1"
                   field="addressLine1"
                   placeholder="House / Flat no., Street name"
+                  form={form}
+                  errors={errors}
+                  touched={touched}
+                  submitAttempted={submitAttempted}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
                 />
                 <Field
                   label="Address line 2 (optional)"
                   field="addressLine2"
                   placeholder="Landmark, Colony, Area"
+                  form={form}
+                  errors={errors}
+                  touched={touched}
+                  submitAttempted={submitAttempted}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
                 />
 
                 <div
@@ -937,6 +1205,12 @@ export default function CheckoutPage() {
                     label="City / Town"
                     field="city"
                     placeholder="Mumbai"
+                    form={form}
+                    errors={errors}
+                    touched={touched}
+                    submitAttempted={submitAttempted}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
                   />
                   <div>
                     <label className="co-label" htmlFor="postalCode">
@@ -946,7 +1220,9 @@ export default function CheckoutPage() {
                       id="postalCode"
                       type="text"
                       inputMode="numeric"
-                      className={`co-input ${errors.postalCode && touched.postalCode ? "error" : ""} ${isValid("postalCode") ? "valid" : ""}`}
+                      className={`co-input ${hasError("postalCode") ? "error" : ""} ${
+                        isValid("postalCode") ? "valid" : ""
+                      }`}
                       placeholder={form.country === "IN" ? "400001" : "00000"}
                       value={form.postalCode}
                       onChange={(e) =>
@@ -957,14 +1233,17 @@ export default function CheckoutPage() {
                       }
                       onBlur={() => handleBlur("postalCode")}
                       maxLength={10}
+                      aria-invalid={hasError("postalCode")}
                     />
-                    {errors.postalCode && touched.postalCode && (
-                      <p className="co-error-msg">⚠ {errors.postalCode}</p>
+                    {hasError("postalCode") && (
+                      <p className="co-error-msg" role="alert">
+                        ⚠ {errors.postalCode}
+                      </p>
                     )}
                   </div>
                 </div>
 
-                {/* State — show for India only */}
+                {/* State — India only */}
                 {form.country === "IN" && (
                   <div>
                     <label className="co-label" htmlFor="state">
@@ -972,10 +1251,11 @@ export default function CheckoutPage() {
                     </label>
                     <select
                       id="state"
-                      className={`co-select ${errors.state && touched.state ? "error" : ""}`}
+                      className={`co-select ${hasError("state") ? "error" : ""}`}
                       value={form.state}
                       onChange={(e) => handleChange("state", e.target.value)}
                       onBlur={() => handleBlur("state")}
+                      aria-invalid={hasError("state")}
                     >
                       <option value="">Select state…</option>
                       {INDIAN_STATES.map((s) => (
@@ -984,17 +1264,19 @@ export default function CheckoutPage() {
                         </option>
                       ))}
                     </select>
-                    {errors.state && touched.state && (
-                      <p className="co-error-msg">⚠ {errors.state}</p>
+                    {hasError("state") && (
+                      <p className="co-error-msg" role="alert">
+                        ⚠ {errors.state}
+                      </p>
                     )}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* ── Section 3: Phone */}
+            {/* Section 3: Phone */}
             <div
-              className="co-card"
+              className={`co-card ${hasError("phone") ? "has-errors" : ""}`}
               style={{ padding: "1.8rem 2rem", animationDelay: "0.26s" }}
             >
               <h2 className="co-section-title">
@@ -1007,27 +1289,15 @@ export default function CheckoutPage() {
                 </label>
                 <div className="phone-prefix">
                   <span className="phone-country-code">
-                    {form.country === "IN"
-                      ? "🇮🇳 +91"
-                      : form.country === "US"
-                        ? "🇺🇸 +1"
-                        : form.country === "GB"
-                          ? "🇬🇧 +44"
-                          : form.country === "CA"
-                            ? "🇨🇦 +1"
-                            : form.country === "AU"
-                              ? "🇦🇺 +61"
-                              : form.country === "SG"
-                                ? "🇸🇬 +65"
-                                : form.country === "AE"
-                                  ? "🇦🇪 +971"
-                                  : "+"}
+                    {DIAL_CODES[form.country] ?? "+"}
                   </span>
                   <input
                     id="phone"
                     type="tel"
                     inputMode="numeric"
-                    className={`co-input phone-input ${errors.phone && touched.phone ? "error" : ""} ${isValid("phone") ? "valid" : ""}`}
+                    className={`co-input phone-input ${hasError("phone") ? "error" : ""} ${
+                      isValid("phone") ? "valid" : ""
+                    }`}
                     placeholder={
                       form.country === "IN" ? "98765 43210" : "000 000 0000"
                     }
@@ -1038,10 +1308,13 @@ export default function CheckoutPage() {
                     onBlur={() => handleBlur("phone")}
                     maxLength={15}
                     style={{ flex: 1 }}
+                    aria-invalid={hasError("phone")}
                   />
                 </div>
-                {errors.phone && touched.phone && (
-                  <p className="co-error-msg">⚠ {errors.phone}</p>
+                {hasError("phone") && (
+                  <p className="co-error-msg" role="alert">
+                    ⚠ {errors.phone}
+                  </p>
                 )}
                 <p
                   style={{
@@ -1059,8 +1332,11 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* ════ RIGHT — Order Summary ════ */}
-          <div style={{ position: "sticky", top: "88px" }}>
+          {/* ════ RIGHT — Order Summary ══════════════════════════════════════ */}
+          <div
+            className="order-summary-sticky"
+            style={{ position: "sticky", top: "88px" }}
+          >
             <div
               className="order-card-anim"
               style={{
@@ -1218,7 +1494,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Saved preferences preview */}
-                {savedPrefs && savedPrefs.text && (
+                {savedPrefs?.text && (
                   <div
                     style={{
                       background: "rgba(255,143,171,0.06)",
@@ -1251,6 +1527,7 @@ export default function CheckoutPage() {
 
                 {/* Preferences button */}
                 <button
+                  type="button"
                   onClick={() => setDialogOpen(true)}
                   style={{
                     width: "100%",
@@ -1273,16 +1550,12 @@ export default function CheckoutPage() {
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor =
-                      "#FF8FAB";
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "#FF8FAB";
+                    e.currentTarget.style.borderColor = "#FF8FAB";
+                    e.currentTarget.style.color = "#FF8FAB";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor =
-                      "rgba(200,178,232,0.4)";
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "#7A5C8A";
+                    e.currentTarget.style.borderColor = "rgba(200,178,232,0.4)";
+                    e.currentTarget.style.color = "#7A5C8A";
                   }}
                 >
                   {savedPrefs?.text
@@ -1292,9 +1565,12 @@ export default function CheckoutPage() {
 
                 {/* Pay button */}
                 <button
+                  ref={payBtnRef}
+                  type="button"
                   className="order-btn-main"
                   onClick={handlePayNow}
                   disabled={loading}
+                  aria-disabled={loading}
                   style={{
                     width: "100%",
                     border: "none",
@@ -1363,16 +1639,18 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* ════ PREFERENCE DIALOG ════ */}
+      {/* ════ PREFERENCE DIALOG ══════════════════════════════════════════════ */}
       {dialogOpen && (
         <div
           className="pref-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Personalise your scoop"
           onClick={(e) => {
             if (e.target === e.currentTarget) setDialogOpen(false);
           }}
         >
           <div className="pref-dialog">
-            {/* Dialog header */}
             <div
               style={{
                 padding: "1.8rem 1.8rem 0",
@@ -1419,7 +1697,9 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setDialogOpen(false)}
+                aria-label="Close"
                 style={{
                   background: "rgba(200,178,232,0.15)",
                   border: "none",
@@ -1435,21 +1715,17 @@ export default function CheckoutPage() {
                   transition: "background 0.2s",
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(255,143,171,0.2)";
+                  e.currentTarget.style.background = "rgba(255,143,171,0.2)";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(200,178,232,0.15)";
+                  e.currentTarget.style.background = "rgba(200,178,232,0.15)";
                 }}
-                aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
             <div style={{ padding: "1.4rem 1.8rem" }}>
-              {/* Free text */}
               <label
                 style={{
                   fontSize: "0.75rem",
@@ -1480,8 +1756,6 @@ export default function CheckoutPage() {
               >
                 {prefText.length}/400
               </div>
-
-              {/* Hint */}
               <p
                 style={{
                   fontSize: "0.74rem",
@@ -1507,11 +1781,11 @@ export default function CheckoutPage() {
                 personal.
               </p>
 
-              {/* Action buttons */}
               <div
                 style={{ display: "flex", gap: "10px", marginTop: "1.4rem" }}
               >
                 <button
+                  type="button"
                   onClick={() => setDialogOpen(false)}
                   style={{
                     flex: 1,
@@ -1530,6 +1804,7 @@ export default function CheckoutPage() {
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={savePrefs}
                   className="order-btn-main"
                   style={{
@@ -1544,7 +1819,6 @@ export default function CheckoutPage() {
                     fontSize: "0.88rem",
                     fontWeight: 800,
                     boxShadow: "0 6px 20px rgba(255,143,171,0.35)",
-                    transition: "all 0.2s",
                   }}
                 >
                   Save Preferences ✦
@@ -1554,85 +1828,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
-
-      <style>{`
-        @media (max-width: 768px) {
-          .checkout-responsive-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </>
-  );
-}
-
-// ─── Helper components ────────────────────────────────────────────────────────
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: "0.72rem",
-        fontWeight: 800,
-        letterSpacing: "1.2px",
-        textTransform: "uppercase",
-        color: "#FF8FAB",
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-      }}
-    >
-      <span
-        style={{
-          width: "5px",
-          height: "5px",
-          borderRadius: "50%",
-          background: "linear-gradient(135deg,#FF8FAB,#C8B2E8)",
-          display: "inline-block",
-          flexShrink: 0,
-        }}
-      />
-      {children}
-    </div>
-  );
-}
-
-function PriceRow({
-  label,
-  value,
-  highlight,
-  soft,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-  soft?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <span
-        style={{
-          fontSize: "0.84rem",
-          fontWeight: 600,
-          color: soft ? "#C8B2E8" : "#A887B8",
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: "0.84rem",
-          fontWeight: 700,
-          color: highlight ? "#5DB87A" : soft ? "#C8B2E8" : "#3D2C47",
-        }}
-      >
-        {value}
-      </span>
-    </div>
   );
 }

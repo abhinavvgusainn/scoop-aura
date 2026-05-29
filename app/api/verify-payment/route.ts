@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       preferences,
       amount,
       paymentId: razorpay_payment_id,
-      status: "processing",
+      status: "pending",
     });
 
     return NextResponse.json({ success: true });

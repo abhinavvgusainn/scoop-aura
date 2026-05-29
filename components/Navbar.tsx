@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const NAV_LINKS = [
   { href: "/#home", label: "Home", icon: "🏠" },
@@ -26,6 +26,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [cartCount] = useState(2);
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -99,21 +100,12 @@ export default function Navbar() {
         {/* Right side */}
         <div className="flex items-center gap-3">
           {/* Cart */}
-          <button
+          <button 
+            onClick={() => router.push('/order-success')}
             aria-label="Cart"
             className="relative p-2 text-[1.25rem] bg-transparent border-none cursor-pointer transition-transform duration-200 hover:scale-110"
           >
             🛍️
-            {cartCount > 0 && (
-              <span
-                className="absolute top-0 right-0 w-[16px] h-[16px] rounded-full text-white text-[0.58rem] font-bold flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, #FF8FAB, #C8B2E8)",
-                }}
-              >
-                {cartCount}
-              </span>
-            )}
           </button>
 
           {/* CTA */}
@@ -137,6 +129,7 @@ export default function Navbar() {
               (e.currentTarget as HTMLButtonElement).style.boxShadow =
                 "0 4px 20px rgba(255,143,171,0.35)";
             }}
+            onClick={() => router.push("/#scoops")}
           >
             Shop Now ✦
           </button>

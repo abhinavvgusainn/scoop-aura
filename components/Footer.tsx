@@ -12,7 +12,6 @@ const footerLinks = {
     "FAQ",
     "Shipping Policy",
     "Returns",
-    "Contact Us",
   ],
 
   Legal: [
@@ -22,25 +21,6 @@ const footerLinks = {
     "About Us",
   ],
 };
-
-const socials = [
-  {
-    icon: "📸",
-    label: "Instagram",
-  },
-  {
-    icon: "🎵",
-    label: "TikTok",
-  },
-  {
-    icon: "📌",
-    label: "Pinterest",
-  },
-  {
-    icon: "▶️",
-    label: "YouTube",
-  },
-];
 
 export default function Footer() {
   return (
@@ -106,7 +86,6 @@ export default function Footer() {
           lg:px-16
         "
       >
-
         {/* TOP GRID */}
         <div
           className="
@@ -119,10 +98,8 @@ export default function Footer() {
             lg:grid-cols-[1.4fr_1fr_1fr_1fr]
           "
         >
-
           {/* BRAND */}
           <div className="max-w-[320px]">
-
             {/* LOGO */}
             <div
               className="
@@ -153,36 +130,35 @@ export default function Footer() {
               adore surprises.
             </p>
 
-            {/* SOCIALS */}
-            <div className="mt-7 flex flex-wrap gap-3">
+            {/* CONTACT */}
+            <div className="mt-7 space-y-3">
+              <a
+                href="mailto:hello@scoopaura.com"
+                className="
+                  flex items-center gap-3
+                  text-[0.92rem]
+                  font-medium
+                  text-[#8E76A3]
+                  transition-colors
+                  hover:text-[#FF8FAB]
+                "
+              >
+                📧 hello@scoopaura.com
+              </a>
 
-              {socials.map((social) => (
-                <button
-                  key={social.label}
-                  aria-label={social.label}
-                  className="
-                    flex h-11 w-11 items-center
-                    justify-center
-
-                    rounded-2xl
-
-                    border border-white/60
-                    bg-white/65
-                    backdrop-blur-xl
-
-                    shadow-[0_8px_24px_rgba(200,178,232,0.12)]
-
-                    transition-all duration-300
-
-                    hover:-translate-y-1
-                    hover:bg-pink-50
-                  "
-                >
-                  <span className="text-[1rem]">
-                    {social.icon}
-                  </span>
-                </button>
-              ))}
+              <a
+                href="tel:+919876543210"
+                className="
+                  flex items-center gap-3
+                  text-[0.92rem]
+                  font-medium
+                  text-[#8E76A3]
+                  transition-colors
+                  hover:text-[#FF8FAB]
+                "
+              >
+                📞 +91 98765 43210
+              </a>
             </div>
           </div>
 
@@ -190,7 +166,6 @@ export default function Footer() {
           {Object.entries(footerLinks).map(
             ([title, links]) => (
               <div key={title}>
-
                 <h3
                   className="
                     text-[0.78rem]
@@ -204,10 +179,8 @@ export default function Footer() {
                 </h3>
 
                 <ul className="mt-5 space-y-4">
-
                   {links.map((link) => (
                     <li key={link}>
-
                       <Link
                         href="#"
                         className="
@@ -222,7 +195,6 @@ export default function Footer() {
                       >
                         {link}
                       </Link>
-
                     </li>
                   ))}
                 </ul>
@@ -247,7 +219,6 @@ export default function Footer() {
             md:text-left
           "
         >
-
           <p
             className="
               text-[0.78rem]
@@ -288,12 +259,12 @@ export default function Footer() {
 
             <span>•</span>
 
-            <Link
-              href="#"
+            <a
+              href="mailto:hello@scoopaura.com"
               className="hover:text-[#FF8FAB]"
             >
-              Instagram
-            </Link>
+              Email
+            </a>
           </div>
         </div>
       </div>

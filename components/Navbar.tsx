@@ -6,20 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 
 const NAV_LINKS = [
   { href: "/#home", label: "Home", icon: "🏠" },
-
   { href: "/#scoops", label: "Scoops", icon: "🍨" },
-
-  {
-    href: "/#process",
-    label: "How It Works",
-    icon: "✨",
-  },
-
-  {
-    href: "/#reviews",
-    label: "Reviews",
-    icon: "💕",
-  },
+  {  href: "/#process", label: "How It Works", icon: "✨", },
+  { href: "/#reviews", label: "Reviews", icon: "💕",},
 ];
 
 export default function Navbar() {

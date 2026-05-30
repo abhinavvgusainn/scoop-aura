@@ -11,7 +11,6 @@ interface LastOrder {
   scoopEmoji: string;
   total: number;
   fullName: string;
-  email: string;
   deliveryDays: string;
 }
 
@@ -146,12 +145,10 @@ export default function OrderSuccessPage() {
     { label: "Payment ID",          value: formatPaymentId(order?.paymentId), mono: true },
     { label: "Amount Paid",         value: order ? `₹${order.total.toLocaleString("en-IN")}` : "—" },
     { label: "Estimated Delivery",  value: order?.deliveryDays ?? "5–7 business days" },
-    { label: "Confirmation sent to",value: order?.email ?? "—" },
   ];
 
   // ── Next-step items ────────────────────────────────────────────────────────
   const nextSteps = [
-    { icon: "📬", title: "Confirmation email",  desc: "An order receipt lands in your inbox within a few minutes.",                                                                   delay: "0.4s" },
     { icon: "🎀", title: "Curating your scoop", desc: "Our team hand-picks items based on your preferences, with love.",                                                              delay: "0.5s" },
     { icon: "🚚", title: "Packed & dispatched", desc: `Your scoop ships within 1–2 business days. Expected arrival: ${order?.deliveryDays ?? "5–7 days"}.`,                          delay: "0.6s" },
     { icon: "🌸", title: "Unbox the magic",     desc: "Every scoop is wrapped with care — made to be unwrapped slowly.",                                                              delay: "0.7s" },
@@ -297,8 +294,6 @@ export default function OrderSuccessPage() {
             >
               {order?.fullName ? `Hey ${order.fullName.split(" ")[0]}! 🌸` : "🌸"}{" "}
               We&apos;ve received your order and are already curating your surprise.
-              A confirmation email is heading to{" "}
-              <strong style={{ color: "#3D2C47" }}>{order?.email ?? "your inbox"}</strong>.
             </p>
           </div>
 
@@ -477,11 +472,11 @@ export default function OrderSuccessPage() {
           >
             Questions? Reach us at{" "}
             <a
-              href="mailto:hello@yourbrand.com"
+              href="mailto:hello@scoopaura.com"
               className="font-bold no-underline"
               style={{ color: "#FF8FAB" }}
             >
-              hello@yourbrand.com
+              hello@scoopaura.com
             </a>
             {" "}— we&apos;re always here. 🌸
           </p>

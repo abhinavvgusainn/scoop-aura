@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const NAV_LINKS = [
   { href: "/#home", label: "Home", icon: "🏠" },
-  { href: "/#scoops", label: "Scoops", icon: "🍨" },
+  { href: "/#scoops", label: "Scoops", icon: "🎁" },
   {  href: "/#process", label: "How It Works", icon: "✨", },
   { href: "/#reviews", label: "Reviews", icon: "💕",},
 ];
@@ -215,6 +215,7 @@ export default function Navbar() {
 
         {/* Cart icon in bottom nav */}
         <button
+          onClick={() => router.push('/order-success')}
           aria-label="Cart"
           className="
             relative flex flex-col items-center justify-center
@@ -227,16 +228,6 @@ export default function Navbar() {
           <span className="text-[0.6rem] font-bold mt-[3px] text-[#A887B8] tracking-[0.2px]">
             Cart
           </span>
-          {cartCount > 0 && (
-            <span
-              className="absolute top-1 right-[10%] w-[15px] h-[15px] rounded-full text-white text-[0.55rem] font-bold flex items-center justify-center"
-              style={{
-                background: "linear-gradient(135deg, #FF8FAB, #C8B2E8)",
-              }}
-            >
-              {cartCount}
-            </span>
-          )}
         </button>
       </div>
 

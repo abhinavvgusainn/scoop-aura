@@ -1300,7 +1300,7 @@ function CheckoutInner() {
                       isValid("phone") ? "valid" : ""
                     }`}
                     placeholder={
-                      form.country === "IN" ? "98765 43210" : "000 000 0000"
+                      form.country === "IN" ? "92868 44493" : "000 000 0000"
                     }
                     value={form.phone}
                     onChange={(e) =>

@@ -147,7 +147,7 @@ export default function Footer() {
               </a>
 
               <a
-                href="tel:+919876543210"
+                href="tel:+919286844493"
                 className="
                   flex items-center gap-3
                   text-[0.92rem]
@@ -157,7 +157,7 @@ export default function Footer() {
                   hover:text-[#FF8FAB]
                 "
               >
-                📞 +91 98765 43210
+                📞 +91 92868 44493
               </a>
             </div>
           </div>

@@ -228,7 +228,7 @@ export default function Scoops() {
             marginBottom: "0.8rem",
           }}
         >
-          Choose Your Scoop 🍨
+          Choose Your Scoop 🎁
         </h2>
         <p
           style={{

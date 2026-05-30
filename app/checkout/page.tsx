@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+export const dynamic = "force-dynamic";
+
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createOrder } from "@/lib/createOrder";
 import { getScoopById } from "@/lib/scoops";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -498,7 +499,7 @@ function PriceRow({
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function CheckoutPage() {
+function CheckoutInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const cssRef = useRef(false);
@@ -1829,5 +1830,13 @@ export default function CheckoutPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={null}>
+      <CheckoutInner />
+    </Suspense>
   );
 }
